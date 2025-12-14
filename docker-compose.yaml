@@ -1,0 +1,42 @@
+services:
+  wings:
+    image: ghcr.io/pterodactyl/wings:latest
+    container_name: pterodactyl-wings
+    restart: unless-stopped
+    privileged: true
+    volumes:
+      - ./pterodactyl-log/:/var/log/pterodactyl/
+
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers/:/var/lib/docker/containers/
+      - ./pterodactyl/:/etc/pterodactyl/
+      - /var/lib/pterodactyl/:/var/lib/pterodactyl/
+
+      # ボリュームパスは、ディレクトリやファイル類が作成された後、
+      # 作成されたインスタンスによってバインドマウントされて利用されるので、
+      # ホスト側とコンテナ側で同じパスにする必要がある
+      # - /var/lib/pterodactyl/volumes/:/var/lib/pterodactyl/volumes/
+      # ./pterodactyl/config.yaml の `system.data` でボリュームパスは変更可能
+      # デフォルトのlibパスより見やすい 追加でディスクがある場合はそこに置くこと
+      # その他 `archive_directory` `backup_directory` も同様に変更可能
+      - /volumes/:/volumes/
+
+      - /tmp/pterodactyl/:/tmp/pterodactyl/
+      - "./certs:/etc/certs:ro"
+    ports:
+      - "2022:2022" # SFTP (必要に応じて)
+      - "443:443" # Wings API configに合わせて変更する
+    environment:
+      TZ: "Asia/Tokyo"
+
+  cloudflared:
+    image: cloudflare/cloudflared
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+      - TUNNEL_TRANSPORT_PROTOCOL=${TUNNEL_TRANSPORT_PROTOCOL}
+    restart: always
+    network_mode: service:wings
