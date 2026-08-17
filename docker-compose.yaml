@@ -24,8 +24,8 @@ services:
       - /tmp/pterodactyl/:/tmp/pterodactyl/
       - "./certs:/etc/certs:ro"
     ports:
-      - "2022:2022" # SFTP (必要に応じて)
-      - "443:443" # Wings API configに合わせて変更する
+      - "2022:2022" # SFTP (マシンでポートを直接公開)
+      - "127.0.0.1:443:443" # Wings API configに合わせて変更する
     environment:
       TZ: "Asia/Tokyo"
 
@@ -40,3 +40,4 @@ services:
       - TUNNEL_TRANSPORT_PROTOCOL=${TUNNEL_TRANSPORT_PROTOCOL}
     restart: always
     network_mode: service:wings
+
