@@ -3,6 +3,11 @@ services:
     image: ghcr.io/pterodactyl/wings:latest
     container_name: pterodactyl-wings
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     privileged: true
     volumes:
       - ./pterodactyl-log/:/var/log/pterodactyl/
@@ -39,5 +44,10 @@ services:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
       - TUNNEL_TRANSPORT_PROTOCOL=${TUNNEL_TRANSPORT_PROTOCOL}
     restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     network_mode: service:wings
 
