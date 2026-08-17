@@ -86,7 +86,7 @@ allowed_origins:
 ```
 
 ### 5. オレオレ証明書の作成
-Pterodactyl wings では、apiの通信にTLSを利用することが推奨されています
+Pterodactyl wings では、apiの通信にTLSを利用することが推奨されています  
 そのため、Cloudflare Tunnelとの通信にオレオレ証明を利用してTLS通信をします
 
 ```bash
@@ -95,7 +95,7 @@ bash ./create-pem.sh
 
 ### 6. Cloudflare Tunnelで公開する
 
-セットアップ後、Cloudflare Tunnelのダッシュボード側で、`https://localhost:80`へ公開設定をしておきましょう
+セットアップ後、Cloudflare Tunnelのダッシュボード側で、`https://localhost`へ公開設定をしておきましょう(configでportを443にしておくとここでport入れなくて済む)  
 **その他のアプリケーション設定-TLSのTLS検証なしの有効化を忘れずに行ってください**
 wingsのオレオレ証明を利用するためです
 
