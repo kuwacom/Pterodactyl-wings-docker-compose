@@ -24,7 +24,7 @@ services:
 
       - "./certs:/etc/certs:ro"
     ports:
-      - "2022:2022" # SFTP (マシンでポートを直接公開)
+      - "${SFTP_PORT:-2022}:${SFTP_PORT:-2022}" # SFTP (マシンでポートを直接公開)
       - "127.0.0.1:443:443" # Wings API configに合わせて変更する
     environment:
       TZ: "Asia/Tokyo"
@@ -45,4 +45,3 @@ services:
         max-size: "10m"
         max-file: "3"
     network_mode: service:wings
-
