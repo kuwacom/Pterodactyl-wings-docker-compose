@@ -26,17 +26,29 @@ cp example.env .env
 - `TUNNEL_TOKEN`: Cloudflare Tunnel のトークン
 
 ### 3. `docker-compose.yaml`を確認
-`docker-compose.yaml`ファイル内のwingsサービス内のコメントにあるように、ボリューム及びtmpディレクトリは、ホスト及びコンテナ内から同じ絶対パスでアクセスができる必要があります
+wingsはコンテナ内で動作していますが、wingsにより生成されるゲームサーバーコンテナはホスト側のDockerデーモンで起動されます（兄弟コンテナモデル）
 
-これは、wingsはコンテナ内で動作しているが、wingsにより生成されるサーバーコンテナはホスト側docekrを利用して起動されるため、tempフォルダや起動するコンテナにマウントするディレクトリはホスト側とwingsが動作しているコンテナ内と同じでないといけないためです
+そのため、ゲームサーバーのデータ本体である `data`（`/volumes/`）だけは、ホスト側とコンテナ側で同じ絶対パスにする必要があります
+これはゲームサーバーコンテナにバインドマウントする際、ホスト側Dockerデーモンに対してホストパスを指定するためです
 
-ただし、これらのフォルダのパスについては、`pterodactyl/config.yml`にて変更が可能です  
-この時点でボリュームやtmp、その他ディレクトリの保存場所を決めておいて、この後のconfigの取得をして書き込むステップにて、ここで設定したパスになるように書き換える必要があります
+それ以外のディレクトリ（`root_directory` / `log_directory` / `archive_directory` / `backup_directory` / `tmp_directory`）はwingsコンテナ内のみで完結するため、ホスト側パスは自由に設定可能です
+本構成では `./pterodactyl/` 配下にまとめています
+
+```
+./pterodactyl/
+  ├── config.yml       # wings 設定ファイル
+  ├── lib/             # root_directory（archives/backups/内部データ）
+  └── log/             # log_directory（wings.log）
+```
+
+> **複数ディスクを使いたい場合**
+> `data` は単一パスしか指定できないため、複数ディスクを扱いたい場合はmergerfs等で1つの仮想ボリュームに統合してから `/volumes/` にマウントしてください
+> シンボリックリンクでの分散はwingsのパス検証と競合するため推奨されません
 
 ### 4. Pterodactyl panel で Node を追加
 Pterodactyl panel にてNode追加を行い、wings用のconfigを取得しましょう
 
-> **追加の際、`Configuration`の`Daemon Port`は必ず`443`へ変更をしてください**  
+> **追加の際、`Configuration`の`Daemon Port`は必ず`443`へ変更をしてください**
 Cloudflare Tunnelからwingsに接続をするため、httpsポートの443にする必要があります
 
 > **`FQDN`はCloudflare Tunnelで設定した公開ドメインにしてください**
@@ -52,12 +64,13 @@ api:
     cert: /etc/certs/fullchain.pem
     key: /etc/certs/privkey.pem
 system:
-  # 基本データの保存先はセットアップセクション3を参考にしてください
-  root_directory: /var/lib/pterodactyl
-  log_directory: /var/log/pterodactyl
+  # config.yml / lib / log を ./pterodactyl/ にまとめるため、
+  # root_directory と log_directory を /etc/pterodactyl/ 配下に変更する
+  root_directory: /etc/pterodactyl/lib
+  log_directory: /etc/pterodactyl/log
   data: /volumes
-  archive_directory: /var/lib/pterodactyl/archives
-  backup_directory: /var/lib/pterodactyl/backups
+  archive_directory: /etc/pterodactyl/lib/archives
+  backup_directory: /etc/pterodactyl/lib/backups
   tmp_directory: /tmp/pterodactyl
 
   # 通常プランのCloudflare Tunnelではsftpは転送できないため、別ルートでのアクセスを構成する場合はここを変更してください
@@ -73,7 +86,7 @@ allowed_origins:
 ```
 
 ### 5. オレオレ証明書の作成
-Pterodactyl wings では、apiの通信にTLSを利用することが推奨されています  
+Pterodactyl wings では、apiの通信にTLSを利用することが推奨されています
 そのため、Cloudflare Tunnelとの通信にオレオレ証明を利用してTLS通信をします
 
 ```bash
@@ -82,8 +95,8 @@ bash ./create-pem.sh
 
 ### 6. Cloudflare Tunnelで公開する
 
-セットアップ後、Cloudflare Tunnelのダッシュボード側で、`https://localhost:80`へ公開設定をしておきましょう  
-**その他のアプリケーション設定-TLSのTLS検証なしの有効化を忘れずに行ってください**  
+セットアップ後、Cloudflare Tunnelのダッシュボード側で、`https://localhost:80`へ公開設定をしておきましょう
+**その他のアプリケーション設定-TLSのTLS検証なしの有効化を忘れずに行ってください**
 wingsのオレオレ証明を利用するためです
 
 ### 7. Docker Composeで起動

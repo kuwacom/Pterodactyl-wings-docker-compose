@@ -10,23 +10,18 @@ services:
         max-file: "3"
     privileged: true
     volumes:
-      - ./pterodactyl-log/:/var/log/pterodactyl/
-
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/lib/docker/containers/:/var/lib/docker/containers/
+      # config.yml / lib / log を1つのマウントにまとめる
+      # config.yml の system セクションで root_directory / log_directory を
+      # /etc/pterodactyl/lib / /etc/pterodactyl/log に変更すること
       - ./pterodactyl/:/etc/pterodactyl/
-      - /var/lib/pterodactyl/:/var/lib/pterodactyl/
 
-      # ボリュームパスは、ディレクトリやファイル類が作成された後、
-      # 作成されたインスタンスによってバインドマウントされて利用されるので、
-      # ホスト側とコンテナ側で同じパスにする必要がある
-      # - /var/lib/pterodactyl/volumes/:/var/lib/pterodactyl/volumes/
-      # ./pterodactyl/config.yaml の `system.data` でボリュームパスは変更可能
-      # デフォルトのlibパスより見やすい 追加でディスクがある場合はそこに置くこと
-      # その他 `archive_directory` `backup_directory` も同様に変更可能
+      # data はゲームサーバーコンテナ（兄弟コンテナ）にバインドマウントされるため、
+      # ホストとコンテナで同じ絶対パスにする必要がある
+      # 複数ディスクを使いたい場合は mergerfs 等で統合してからマウントする
       - /volumes/:/volumes/
 
-      - /tmp/pterodactyl/:/tmp/pterodactyl/
       - "./certs:/etc/certs:ro"
     ports:
       - "2022:2022" # SFTP (マシンでポートを直接公開)
