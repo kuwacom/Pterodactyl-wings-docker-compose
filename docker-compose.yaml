@@ -19,8 +19,9 @@ services:
 
       # data はゲームサーバーコンテナ（兄弟コンテナ）にバインドマウントされるため、
       # ホストとコンテナで同じ絶対パスにする必要がある
+      # VOLUME_PATH は config.yml の system.data と同じ値にすること
       # 複数ディスクを使いたい場合は mergerfs 等で統合してからマウントする
-      - /volumes/:/volumes/
+      - ${VOLUME_PATH:-/volumes}:${VOLUME_PATH:-/volumes}
 
       - "./certs:/etc/certs:ro"
     ports:
@@ -45,3 +46,4 @@ services:
         max-size: "10m"
         max-file: "3"
     network_mode: service:wings
+

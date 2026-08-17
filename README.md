@@ -24,11 +24,13 @@ cp example.env .env
 以下の内容を .env ファイルとしてルートディレクトリに作成し、自分の環境に合わせて編集してください
 
 - `TUNNEL_TOKEN`: Cloudflare Tunnel のトークン
+- `SFTP_PORT`: SFTP 用ポート（config.yml の `system.sftp.bind_port` と同じ値にすること）
+- `VOLUME_PATH`: ゲームサーバーデータの保存先（config.yml の `system.data` と同じ値にすること）
 
 ### 3. `docker-compose.yaml`を確認
 wingsはコンテナ内で動作していますが、wingsにより生成されるゲームサーバーコンテナはホスト側のDockerデーモンで起動されます（兄弟コンテナモデル）
 
-そのため、ゲームサーバーのデータ本体である `data`（`/volumes/`）だけは、ホスト側とコンテナ側で同じ絶対パスにする必要があります
+そのため、ゲームサーバーのデータ本体である `data`（`VOLUME_PATH`）だけは、ホスト側とコンテナ側で同じ絶対パスにする必要があります
 これはゲームサーバーコンテナにバインドマウントする際、ホスト側Dockerデーモンに対してホストパスを指定するためです
 
 それ以外のディレクトリ（`root_directory` / `log_directory` / `archive_directory` / `backup_directory` / `tmp_directory`）はwingsコンテナ内のみで完結するため、ホスト側パスは自由に設定可能です
@@ -41,8 +43,13 @@ wingsはコンテナ内で動作していますが、wingsにより生成され�
   └── log/             # log_directory（wings.log）
 ```
 
+> **⚠️ ディスク構成について**
+> `data`（`VOLUME_PATH`）はゲームサーバーのデータ・バックアップ・アーカイブが格納されるため、容量を大きく消費します
+> 本番運用では `VOLUME_PATH` をOSディスクとは別のディスク（別マウントポイント）に配置することを強く推奨します
+> ディスク枯渇でOS自体が停止するのを防ぎ、I/Oの分離にもなります
+
 > **複数ディスクを使いたい場合**
-> `data` は単一パスしか指定できないため、複数ディスクを扱いたい場合はmergerfs等で1つの仮想ボリュームに統合してから `/volumes/` にマウントしてください
+> `data` は単一パスしか指定できないため、複数ディスクを扱いたい場合はmergerfs等で1つの仮想ボリュームに統合してから `VOLUME_PATH` にマウントしてください
 > シンボリックリンクでの分散はwingsのパス検証と競合するため推奨されません
 
 ### 4. Pterodactyl panel で Node を追加
@@ -68,6 +75,7 @@ system:
   # root_directory と log_directory を /etc/pterodactyl/ 配下に変更する
   root_directory: /etc/pterodactyl/lib
   log_directory: /etc/pterodactyl/log
+  # data は .env の VOLUME_PATH と同じ値にすること
   data: /volumes
   archive_directory: /etc/pterodactyl/lib/archives
   backup_directory: /etc/pterodactyl/lib/backups
@@ -76,7 +84,7 @@ system:
   # 通常プランのCloudflare Tunnelではsftpは転送できないため、別ルートでのアクセスを構成する場合はここを変更してください
   sftp:
     bind_address: 0.0.0.0
-    bind_port: 2022
+    bind_port: 2022 # .env の SFTP_PORT と同じ値にすること
     read_only: false
 
 remote: <Pterodactyl panel のURL httpsが好ましい>
@@ -86,7 +94,7 @@ allowed_origins:
 ```
 
 ### 5. オレオレ証明書の作成
-Pterodactyl wings では、apiの通信にTLSを利用することが推奨されています  
+Pterodactyl wings では、apiの通信にTLSを利用することが推奨されています
 そのため、Cloudflare Tunnelとの通信にオレオレ証明を利用してTLS通信をします
 
 ```bash
@@ -95,7 +103,7 @@ bash ./create-pem.sh
 
 ### 6. Cloudflare Tunnelで公開する
 
-セットアップ後、Cloudflare Tunnelのダッシュボード側で、`https://localhost`へ公開設定をしておきましょう(configでportを443にしておくとここでport入れなくて済む)  
+セットアップ後、Cloudflare Tunnelのダッシュボード側で、`https://localhost`へ公開設定をしておきましょう(configでportを443にしておくとここでport入れなくて済む)
 **その他のアプリケーション設定-TLSのTLS検証なしの有効化を忘れずに行ってください**
 wingsのオレオレ証明を利用するためです
 
