@@ -43,11 +43,13 @@ wingsはコンテナ内で動作していますが、wingsにより生成され�
   └── log/             # log_directory（wings.log）
 ```
 
-> **⚠️ ディスク構成について**
+> [!WARNING]
+> **ディスク構成について**
 > `data`（`VOLUME_PATH`）はゲームサーバーのデータ・バックアップ・アーカイブが格納されるため、容量を大きく消費します
 > 本番運用では `VOLUME_PATH` をOSディスクとは別のディスク（別マウントポイント）に配置することを強く推奨します
 > ディスク枯渇でOS自体が停止するのを防ぎ、I/Oの分離にもなります
 
+> [!NOTE]
 > **複数ディスクを使いたい場合**
 > `data` は単一パスしか指定できないため、複数ディスクを扱いたい場合はmergerfs等で1つの仮想ボリュームに統合してから `VOLUME_PATH` にマウントしてください
 > シンボリックリンクでの分散はwingsのパス検証と競合するため推奨されません
@@ -55,9 +57,11 @@ wingsはコンテナ内で動作していますが、wingsにより生成され�
 ### 4. Pterodactyl panel で Node を追加
 Pterodactyl panel にてNode追加を行い、wings用のconfigを取得しましょう
 
+> [!IMPORTANT]
 > **追加の際、`Configuration`の`Daemon Port`は必ず`443`へ変更をしてください**
-Cloudflare Tunnelからwingsに接続をするため、httpsポートの443にする必要があります
+> Cloudflare Tunnelからwingsに接続をするため、httpsポートの443にする必要があります
 
+> [!IMPORTANT]
 > **`FQDN`はCloudflare Tunnelで設定した公開ドメインにしてください**
 
 次に、取得したwings用configの以下の項目を書き換えます
