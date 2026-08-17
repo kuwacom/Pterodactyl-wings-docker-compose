@@ -37,7 +37,7 @@ services:
       - run
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
-      - TUNNEL_TRANSPORT_PROTOCOL=${TUNNEL_TRANSPORT_PROTOCOL}
+      - TUNNEL_TRANSPORT_PROTOCOL=${TUNNEL_TRANSPORT_PROTOCOL:-http2}
     restart: always
     logging:
       driver: json-file
