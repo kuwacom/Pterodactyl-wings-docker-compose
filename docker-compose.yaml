@@ -23,6 +23,10 @@ services:
       # 複数ディスクを使いたい場合は mergerfs 等で統合してからマウントする
       - ${VOLUME_PATH:-/volumes}:${VOLUME_PATH:-/volumes}
 
+      # tmp_directory はサーバー作成時に使用され、ゲームサーバーコンテナにもマウントされるため
+      # ホストとコンテナで同じ絶対パスにする必要がある（config.yml の system.tmp_directory と同じ値）
+      - /tmp/pterodactyl/:/tmp/pterodactyl/
+
       - "./certs:/etc/certs:ro"
     ports:
       - "${SFTP_PORT:-2022}:${SFTP_PORT:-2022}" # SFTP (マシンでポートを直接公開)

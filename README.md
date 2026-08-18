@@ -49,10 +49,10 @@ cp .env.example .env
 
 Wings はコンテナ内で動作しますが、Wings により生成されるゲームサーバーコンテナはホスト側の Docker デーモンで起動されます（兄弟コンテナモデル）
 
-そのため、ゲームサーバーのデータ本体である `data`（`VOLUME_PATH`）だけは、ホスト側とコンテナ側で同じ絶対パスにする必要があります
+そのため、ゲームサーバーのデータ本体である `data`（`VOLUME_PATH`）と、インストールプロセス等で使用される `tmp_directory` は、ホスト側とコンテナ側で同じ絶対パスにする必要があります
 これはゲームサーバーコンテナにバインドマウントする際、ホスト側 Docker デーモンに対してホストパスを指定するためです
 
-それ以外のディレクトリ（`root_directory` / `log_directory` / `archive_directory` / `backup_directory` / `tmp_directory`）は Wings コンテナ内のみで完結するため、ホスト側パスは自由に設定可能です
+それ以外のディレクトリ（`root_directory` / `log_directory` / `archive_directory` / `backup_directory`）は Wings コンテナ内のみで完結するため、ホスト側パスは自由に設定可能です
 本構成では `./pterodactyl/` 配下にまとめています
 
 > [!WARNING]
