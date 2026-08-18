@@ -79,6 +79,10 @@ Pterodactyl Panel にて Node 追加を行い、Wings 用の config を取得し
 
 次に、取得した Wings 用 config の以下の項目を書き換え、`./pterodactyl/config.yml` として保存してください
 
+> [!NOTE]
+> Panel から取得できる config には `docker.network` セクションが含まれていません
+> このセクションは Wings 側で独自に設定する項目のため、手動で追記してください
+
 ```yaml
 api:
   host: 0.0.0.0  # バインドしたいアドレス空間がある場合は制限してください
@@ -108,6 +112,24 @@ system:
     bind_address: 0.0.0.0
     bind_port: 2022  # .env の SFTP_PORT と同じ値にすること
     read_only: false
+
+# Wings は起動時に Docker API を経由してゲームサーバー隔離用ネットワーク
+# `pterodactyl_nw`（bridge名: pterodactyl0）を作成します
+# デフォルトのサブネット 172.18.0.0/16 がインスタンス自体の所属ネットワーク等と
+# 重複する場合は、重複しないサブネットに変更してください
+docker:
+  network:
+    interface: 10.0.0.1
+    name: pterodactyl_nw
+    network_mode: pterodactyl_nw
+    driver: bridge
+    is_internal: false
+    enable_icc: true
+    network_mtu: 1500
+    interfaces:
+      v4:
+        subnet: 10.0.0.0/16
+        gateway: 10.0.0.1
 
 remote: <Pterodactyl Panel のURL httpsが好ましい>
 allowed_origins:
@@ -206,3 +228,28 @@ docker compose up -d
 
 - `.env` の `SFTP_PORT` と `config.yml` の `system.sftp.bind_port` が同じ値か確認
 - ファイアウォールで `SFTP_PORT` が開放されているか確認
+
+### Wings 起動時に `Pool overlaps with other one on this address space` が出る
+
+Wings が起動時に Docker API 経由で作成するゲームサーバー隔離用ネットワーク `pterodactyl_nw`（bridge名: `pterodactyl0`）のデフォルトサブネット `172.18.0.0/16` が、インスタンス自体の所属ネットワーク等と重複しているのが原因です
+
+これは Wings が Docker API 経由で独自に作成するネットワークであり、`docker-compose.yaml` の `networks:` セクションとは無関係です。`config.yml` の `docker.network` セクションで重複しないサブネットに変更してください
+
+```yaml
+docker:
+  network:
+    interface: 10.0.0.1
+    name: pterodactyl_nw
+    network_mode: pterodactyl_nw
+    driver: bridge
+    is_internal: false
+    enable_icc: true
+    network_mtu: 1500
+    interfaces:
+      v4:
+        subnet: 10.0.0.0/16
+        gateway: 10.0.0.1
+```
+
+> [!NOTE]
+> 既に Wings が古いサブネットで `pterodactyl_nw` ネットワークを作成済みの場合は、`docker network rm pterodactyl_nw` で削除してから再起動してください
