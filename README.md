@@ -115,6 +115,15 @@ system:
     bind_port: 2022  # .env の SFTP_PORT と同じ値にすること
     read_only: false
 
+  # machine_id はゲームサーバーコンテナに /etc/machine-id をマウントする機能です
+  # Hytale がトークン暗号化に machine-id を必要とするため追加された機能で、
+  # デフォルトは有効です。Hytale を実行しない場合は無効化を推奨します
+  # 有効にする場合は、directory を VOLUME_PATH 配下などホストと共有されるパスに
+  # 変更してください（ゲームサーバーコンテナにバインドマウントされるため）
+  machine_id:
+    enabled: false
+    directory: /run/wings/machine-id
+
 # Wings は起動時に Docker API を経由してゲームサーバー隔離用ネットワーク
 # `pterodactyl_nw`（bridge名: pterodactyl0）を作成します
 # デフォルトのサブネット 172.18.0.0/16 がインスタンス自体の所属ネットワーク等と
@@ -285,3 +294,27 @@ docker:
 
 > [!NOTE]
 > 既に Wings が古いサブネットで `pterodactyl_nw` ネットワークを作成済みの場合は、`docker network rm pterodactyl_nw` で削除してから再起動してください
+
+### `machine_id` について
+
+Wings はデフォルトで `machine_id` 機能が有効です。これは各サーバーの UUID（ハイフン除去）を `/etc/machine-id` として生成し、ゲームサーバーコンテナにマウントする機能です
+
+この機能は **Hytale** がトークン暗号化に machine-id を必要とするために追加されました（Wings v1.12.1）。Hytale を実行しない場合は無効化を推奨します
+
+```yaml
+system:
+  machine_id:
+    enabled: false
+```
+
+> [!WARNING]
+> Wings を Docker で動かす場合、`machine_id` を有効にする場合は `directory` の変更が必要です
+> デフォルトの `/run/wings/machine-id` は Wings コンテナ内の一時パスですが、ゲームサーバーコンテナ（兄弟コンテナ）にバインドマウントされるため、ホスト側とコンテナ側で同じ絶対パスにする必要があります
+> `VOLUME_PATH` 配下など、ホストと共有されるパスに変更してください
+>
+> ```yaml
+> system:
+>   machine_id:
+>     enabled: true
+>     directory: /volumes/.machine-id  # VOLUME_PATH 配下等、ホストと共有されるパス
+> ```
