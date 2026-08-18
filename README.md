@@ -71,8 +71,13 @@ Wings はコンテナ内で動作しますが、Wings により生成される�
 Pterodactyl Panel にて Node 追加を行い、Wings 用の config を取得しましょう
 
 > [!IMPORTANT]
-> **追加の際、`Configuration` の `Daemon Port` は必ず `443` に変更してください**
-> Cloudflare Tunnel から Wings に接続するため、HTTPS ポートの 443 にする必要があります
+> **追加の際、以下の設定を行ってください**
+> - **`Behind Proxy`**: `Behind Proxy` を選択（Cloudflare Tunnel 経由で接続するため）
+> - **`Daemon Port`**: `443` のまま（Panel が Wings にアクセスする際のポート）
+>
+> `Behind Proxy` を有効にすると、Panel が生成する config.yml で `api.ssl.enabled` が `false` になります
+> これにより Wings 側で TLS 証明書が不要になり、`create-pem.sh` の実行も不要になります
+> Wings は 443 ポートで HTTP をリッスンし、Cloudflare Tunnel が TLS を終端します
 
 > [!IMPORTANT]
 > **`FQDN` は Cloudflare Tunnel で設定した公開ドメインにしてください**
@@ -86,12 +91,9 @@ Pterodactyl Panel にて Node 追加を行い、Wings 用の config を取得し
 ```yaml
 api:
   host: 0.0.0.0  # バインドしたいアドレス空間がある場合は制限してください
-  port: 443      # config生成時に設定したポートになりますが、8080等でも問題ありません
-                 # その場合はCloudflare Tunnelの公開先ポートも合わせて変更してください
+  port: 443      # Panel の Daemon Port と同じ値。Behind Proxy 有効時は HTTP でリッスンします
   ssl:
-    enabled: true
-    cert: /etc/certs/fullchain.pem
-    key: /etc/certs/privkey.pem
+    enabled: false  # Behind Proxy 有効時は false になります
 
 system:
   # config.yml / lib / log を ./pterodactyl/ にまとめるため、
@@ -137,18 +139,7 @@ allowed_origins:
   - https://example.com
 ```
 
-### 5. オレオレ証明書の作成
-
-Pterodactyl Wings では、API の通信に TLS を利用することが推奨されています
-Cloudflare Tunnel との通信にオレオレ証明書を利用して TLS 通信を行います
-
-```bash
-bash ./create-pem.sh
-```
-
-`./certs/` 配下に `fullchain.pem` と `privkey.pem` が生成されます
-
-### 6. Cloudflare Tunnel で公開する
+### 5. Cloudflare Tunnel で公開する
 
 Cloudflare Tunnel のダッシュボードで、Wings API を公開する Public Hostname を追加します
 
@@ -161,21 +152,62 @@ Cloudflare Tunnel のダッシュボードで、Wings API を公開する Public
    | **Subdomain** | 任意（例: `wings`） |
    | **Domain** | Cloudflare で管理済みのドメインを選択 |
    | **Path** | 空 |
-   | **Service Type** | `HTTPS` |
+   | **Service Type** | `HTTP` |
    | **URL** | `localhost:443`（`config.yml` の `api.port` に合わせる） |
 
-4. **Additional application settings** -> **TLS** を展開し、**No TLS Verify** を有効化
-   - Wings はオレオレ証明書を利用するため、TLS 検証を無効化する必要があります
-5. **Save hostname** をクリック
+4. **Save hostname** をクリック
 
 > [!NOTE]
 > cloudflared コンテナは Wings コンテナのネットワークに所属しているため、`localhost:443` で Wings API にアクセスできます
+> Cloudflare↔cloudflared 間は TLS で暗号化されるため、Wings 側で TLS 証明書は不要です
 
-### 7. Docker Compose で起動
+### 6. Docker Compose で起動
 
 ```bash
 docker compose up -d
 ```
+
+## 🔧 オプション: TLS を Wings で終端する
+
+本構成では Cloudflare Tunnel が TLS を終端するため、Wings 側で TLS 証明書は不要です
+しかし、Cloudflare Tunnel を経由せず直接 Wings に HTTPS で接続したい場合は、以下の手順で Wings 側で TLS を終端できます
+
+### 1. Panel の `Behind Proxy` を無効にする
+
+Panel の Node 設定で `Behind Proxy` を `Not Behind Proxy` に変更します
+これにより、Panel が生成する config.yml で `api.ssl.enabled` が `true` になります
+
+### 2. オレオレ証明書を作成する
+
+```bash
+bash ./create-pem.sh
+```
+
+`./certs/` 配下に `fullchain.pem` と `privkey.pem` が生成されます
+
+### 3. config.yml の SSL 設定を有効にする
+
+```yaml
+api:
+  host: 0.0.0.0
+  port: 443
+  ssl:
+    enabled: true
+    cert: /etc/certs/fullchain.pem
+    key: /etc/certs/privkey.pem
+```
+
+### 4. Cloudflare Tunnel の Service Type を `HTTPS` にする
+
+Cloudflare Tunnel の Public Hostname 設定で以下を変更します
+
+| 項目 | 設定値 |
+|------|--------|
+| **Service Type** | `HTTPS` |
+| **URL** | `localhost:443` |
+
+**Additional application settings** -> **TLS** を展開し、**No TLS Verify** を有効化します
+Wings はオレオレ証明書を利用するため、TLS 検証を無効化する必要があります
 
 ## 🌐 アクセス先
 
@@ -193,8 +225,8 @@ docker compose up -d
 .
 ├── docker-compose.yaml
 ├── .env.example / .env
-├── create-pem.sh
-├── certs/                   # TLS証明書（create-pem.shで生成）
+├── create-pem.sh           # オレオレ証明書生成スクリプト（TLS終端をWingsで行う場合のみ使用）
+├── certs/                   # TLS証明書（create-pem.shで生成。Behind Proxy有効時は不要）
 ├── pterodactyl/             # Wings設定・ログ・内部データ（config.yml / lib / log）
 └── <VOLUME_PATH>/           # ゲームサーバーデータ（VOLUME_PATHで指定）
 ```
@@ -220,9 +252,9 @@ docker compose up -d
 
 ### Cloudflare Tunnel 経由で接続できない
 
-- Cloudflare Tunnel の **No TLS Verify** が有効になっているか確認
 - `config.yml` の `api.port` と Cloudflare Tunnel の公開先ポートが一致しているか確認
-- `api.ssl.enabled` が `true` になっているか確認
+- Cloudflare Tunnel の **Service Type** が `HTTP` になっているか確認
+- `api.ssl.enabled` が `false` になっているか確認（`Behind Proxy` 有効時）
 
 ### SFTP に接続できない
 
